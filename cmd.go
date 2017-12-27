@@ -1,14 +1,9 @@
 package vcmd
 
 import (
-	"os"
 	"strings"
 	"errors"
 )
-
-const NoErrorCode = 0
-const ArgError = 1
-
 
 type Arg struct {
 	K string
@@ -16,10 +11,9 @@ type Arg struct {
 }
 
 type cmd struct {
-	s       string
-	args    map[string]*Arg
-	errCode int
-	errMsg  string
+	s    string
+	args map[string]*Arg
+	err  error
 }
 
 var cmdInstance *cmd
@@ -27,14 +21,13 @@ var cmdInstance *cmd
 // parse args
 func parse(args []string) *cmd {
 	s := parseString(args)
-	cmdInstance = &cmd{s,make(map[string]*Arg), NoErrorCode, ""}
+	cmdInstance = &cmd{s, make(map[string]*Arg), nil}
 	length := len(args)
 	if length < 1 {
-		cmdInstance.errCode = ArgError
-		cmdInstance.errMsg = "not found args"
+		cmdInstance.err = errors.New("not found args")
 	} else {
 		for i := 0; i < length; i++ {
-			arg := parseParam(os.Args[i])
+			arg := parseParam(args[i])
 			cmdInstance.args[arg.K] = arg
 
 		}
@@ -47,7 +40,7 @@ func parse(args []string) *cmd {
 func parseString(args []string) string {
 	s := ""
 	length := len(args)
-	for i:=0; i<length ; i++ {
+	for i := 0; i < length; i++ {
 		s += args[i] + " "
 	}
 
@@ -74,16 +67,16 @@ func parseParam(s string) *Arg {
 
 // Get all args
 func (c *cmd) GetAll() (map[string]*Arg, error) {
-	if c.errCode > 0 {
-		return nil, errors.New(c.errMsg)
+	if c.err != nil {
+		return nil, c.err
 	}
 	return c.args, nil
 }
 
 // Get a arg by name
 func (c *cmd) Get(name string) (*Arg, error) {
-	if c.errCode > 0 {
-		return nil, errors.New(c.errMsg)
+	if c.err != nil {
+		return nil, c.err
 	}
 	if v, ok := c.args[name]; ok {
 		return v, nil
@@ -92,13 +85,19 @@ func (c *cmd) Get(name string) (*Arg, error) {
 	}
 
 }
-
+// cmd to string
 func (c *cmd) ToString() string {
 	return c.s
 }
 
+// get cmd error
+func (c *cmd) getError() error {
+	return c.err
+}
+
+
 // get cmd instance
-func Cmd(args []string) *cmd {
+func New(args []string) *cmd {
 	if cmdInstance != nil {
 		return cmdInstance
 	}
